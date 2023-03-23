@@ -1,15 +1,24 @@
 extends CharacterBody2D
 
+# TODO:
+	# Add jump buffering. Thinking I should add an area 2d below the player which just resets their jumps when comes into contact with the ground.
+	# Add wall slide and jump. This jump should only activate when a variable is true, should give them a horizontal impulse away from the wall and still allow a double jump if unlocked.
+	# Make it so that if the player clips the edge of a wall when jumping, the player is pushed to the side without losing and vertical speed. Probably done using several area 2d's above player.
+	# Then we can move onto weapon. First, add the lmb main attack, simply dealing damage to enemies in front. Then, onto rmb special. This throws weapon away from player, dealing decreased damage but increased knockback.
+	# If the special comes into contact with an 'anchor point', the players velocity is cancelled before they are pulled towards the anchor point with a constant velocity.
+
 # Can be changed:
 const MAX_WALK_SPEED = 100
 const ACCELERATION = 20
 const MAX_FALL_SPEED = 450
-const GRAVITY = 5
-const JUMP = 275
+const GRAVITY = 12
+const JUMP = 270
 const COYOTE_TIMING = 10
-const JUMP_BUFFER = 20
+var maxJumps = 2
 
 # Cannot be changed:
+var coyoteTimingOut = false
+var numJumps = maxJumps
 var coyoteTimingFrames = COYOTE_TIMING
 var jumpBufferFrames = 0
 var falling = true
@@ -40,25 +49,26 @@ func walk(direction):
 
 func jump():
 	# Handles jump and falling state:
-	if Input.is_action_just_pressed("jump") and canJump == true:
-		velocity.y -= JUMP
+	if Input.is_action_just_pressed("jump") and numJumps > 0:
 		falling = false
-		canJump = false
-	if  Input.is_action_just_released("jump"):
+		velocity.y = -JUMP
+		numJumps -= 1
+	if  Input.is_action_just_released("jump") and falling == false:
 		falling = true
 		velocity.y *= 0.5
-	if velocity.y >= 0 and coyoteTimingFrames == 0:
+	if velocity.y >= 0:
 		falling = true
 	if is_on_floor():
+		numJumps = maxJumps
 		falling = false
 	# Handles coyote timing:
+		coyoteTimingOut = false
 		coyoteTimingFrames = COYOTE_TIMING
 	if not is_on_floor() and coyoteTimingFrames > 0:
 		coyoteTimingFrames -= 1
-	if coyoteTimingFrames == 0:
-		canJump = false
-	else:
-		canJump = true
+	if coyoteTimingFrames == 0 and coyoteTimingOut == false and numJumps == maxJumps:
+		numJumps -= 1
+		coyoteTimingOut = true
 
 func gravity():
 	if velocity.y < MAX_FALL_SPEED and not is_on_floor():
@@ -74,4 +84,3 @@ func _process(_delta):
 	gravity()
 	jump()
 	move_and_slide()
-	print(falling)
